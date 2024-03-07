@@ -4,6 +4,9 @@ from VariantCallFixer.RowDict import RowDict
 from VariantCallFixer.Functions import splitRow, rowFromBytes
 
 class ReadVCF(VCFIOWrapper):
+
+
+	header : dict[str,str]
 	entryRows : list[int]
 	rowsBySelection : dict[str,dict[str|int, set[int]]]
 	columns : list[str] = ["CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER", "INFO", "FORMAT", "SAMPLES"]
@@ -14,6 +17,7 @@ class ReadVCF(VCFIOWrapper):
 	def __init__(self, filename : str):
 		super().__init__(filename, mode="rb")
 
+		self.header = {}
 		self.entryRows = []
 		self.byteToRow = {}
 		self.rowsBySelection = {c:{} for c in self.columns}
@@ -26,7 +30,9 @@ class ReadVCF(VCFIOWrapper):
 			rowNumber += 1
 			self.byteToRow[startOfRow] = rowNumber
 			if row.startswith(b"##"):
-				pass # Meta row
+				name, value = row[2:].split(b"=", 1)
+				if name.isalnum():
+					self.header[name.encode("utf-8").strip()] = value.encode("utf-8").strip()
 			elif row.startswith(b"#"):
 				l = len("#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO")
 				if len(row) >= l and len(row) <= l+3:
@@ -70,7 +76,7 @@ class ReadVCF(VCFIOWrapper):
 		self.file.seek(self.entryRows[0])
 		return (rowFromBytes(row.rstrip()) for row in self.file)
 
-	def where(self, CHROM : str | list[str]=None, POS : int|list[int]=None, REF : str | list[str]=None, ALT : str | list[str]=None, QUAL : int | list[int]=None, FILTER : str | list[str]=None, INFO : str | list[str]=None, FORMAT=None) -> list[RowDict]:
+	def where(self, CHROM : str | list[str]=None, POS : int|list[int]=None, REF : str | list[str]=None, ALT : str | list[str]=None, QUAL : int | list[int]=None, FILTER : str | list[str]=None, INFO : str | list[str]=None, FORMAT=None, rawOut : bool=False) -> list[RowDict]:
 		"""Gets dictionary of VCF row values, interpreted into pythonic types as well as it can. Dictionary can be
 		queried using keys (or attributes) of the same names as the keyword-arguments for this method."""
 		
@@ -100,7 +106,10 @@ class ReadVCF(VCFIOWrapper):
 		for rowStart in rowStarts:
 			self.file.seek(rowStart)
 			try:
-				rows.append(rowFromBytes(self.file.readline().rstrip()))
+				if not rawOut:
+					rows.append(rowFromBytes(self.file.readline().rstrip()))
+				else:
+					rows.append(self.file.readline().rstrip().encode("utf-8"))
 			except:
 				LOGGER.error("Bad row in VCF file '{filename}' Row #{n}".format(filename=self.file.name, n=self.byteToRow[rowStart]))
 				raise ValueError("Bad row in VCF file '{filename}' Row #{n}".format(filename=self.file.name, n=self.byteToRow[rowStart]))

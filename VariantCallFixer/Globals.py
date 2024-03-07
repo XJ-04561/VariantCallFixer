@@ -44,6 +44,7 @@ COLUMNS = ["CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER", "INFO"]
 OPTIONAL_COLUMNS = ["FORMAT"]
 VCF_ROW =       "{CHROM}	{POS}	{ID}	{REF}	{ALT}	{QUAL}	{FILTER}	{INFO}"
 SEPARATORS = [(0, ";"), (1, ":"), (2, "|"), (3, ",")]
+CONDITIONS = {">":"__gt__", "<":"__lt__", ">=":"__ge__", "<=":"__le__", "==":"__eq__", "!=":"__ne__"}
 LOGGER = DummyLogger()
 
 class VCFIOWrapper:
