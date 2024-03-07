@@ -1,6 +1,6 @@
 
 from VariantCallFixer.Globals import *
-from Functions import interpret
+from VariantCallFixer.Functions import interpret
 
 class RowDict(dict):
 	CHROM : str
