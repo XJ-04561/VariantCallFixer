@@ -75,11 +75,35 @@ class ReadVCF(VCFIOWrapper):
 		self.file.seek(self.entryRows[0])
 		return (rowFromBytes(row.rstrip()) for row in self.file)
 
-	def where(self, CHROM : str | list[str]=None, POS : int|list[int]=None, REF : str | list[str]=None, ALT : str | list[str]=None, QUAL : int | list[int]=None, FILTER : str | list[str]=None, INFO : str | list[str]=None, FORMAT=None, rawOut : bool=False) -> list[RowDict]:
-		"""Gets dictionary of VCF row values, interpreted into pythonic types as well as it can. Dictionary can be
-		queried using keys (or attributes) of the same names as the keyword-arguments for this method."""
+	def where(self, *args, **kwargs) -> list[RowDict]:
+		"""```python
+		def where(self,
+			CHROM : str | list[str],
+			POS : int | list[int],
+			ID : str,
+			REF : str | list[str],
+			ALT : str | list[str],
+			QUAL : int | list[int],
+			FILTER : str | list[str],
+			INFO : tuple[str,str,Any] | list[tuple[str,str,Any]],
+			FORMAT : tuple[str,str,Any] | list[tuple[str,str,Any]],
+			rawOut : bool=False) -> list[RowDict]:
+		```
+		Gets dictionary of VCF row values, interpreted into pythonic types as well as it can. Dictionary can be
+		queried using keys (or attributes) of the same names as the keyword-arguments for this method.
+		
+		INFO and FORMAT selectors are not yet implemented!
+		"""
 
-		flags = {c:locals()[c] for c in self.columns if locals()[c] is not None}
+
+		rawOut = kwargs.pop("rawOut", False)
+		
+		if not set(kwargs.keys()).issubset(self.columns):
+			raise TypeError(f"ReadVCF.where() got (an) unexpected keyword argument(s) {', '.join(set(kwargs.keys()).difference(self.columns))}'")
+		elif len(args)>0 and set(self.columns[:len(args)]).issubset(kwargs.keys()):
+			raise TypeError(f"ReadVCF.where() was given values for a column through both positional and keyword arguments. Offending Columns: {', '.join(set(self.columns[:len(args)]).intersection(kwargs.keys()))}")
+		
+		flags = dict(zip(self.columns, args)) | kwargs
 		if len(flags) == 0:
 			LOGGER.debug("ReadVCF.where() not given any keyword arguments to search by.")
 			return None
@@ -87,7 +111,7 @@ class ReadVCF(VCFIOWrapper):
 		# Needs to find intersect of row sets.
 		sets : list[set] = []
 		for flag, value in flags.items():
-			if type(value) in [list, tuple]:
+			if type(value) is list:
 				s = set()
 				for key in value:
 					s |= self.rowsBySelection[flag][key]
