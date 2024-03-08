@@ -2,9 +2,6 @@
 
 
 from VariantCallFixer.Globals import *
-from VariantCallFixer.RowDict import RowDict
-from VariantCallFixer.ReadVCF import ReadVCF
-from VariantCallFixer.CreateVCF import CreateVCF
 
 def interpretIterable(string : str, seps=SEPARATORS):
 	if string.startswith("[") and string.endswith("]"):
@@ -51,7 +48,8 @@ def splitRow(row : bytes) -> dict[str,bytes]:
 	
 	return rowDict
 
-def rowFromBytes(row : bytes) -> RowDict:
+def rowFromBytes(row : bytes):
+	from VariantCallFixer.RowDict import RowDict
 	rowDict = splitRow(row)
 	if rowDict is None:
 		LOGGER.warning("Bad row in VCF file.")
@@ -65,6 +63,8 @@ def openVCF(filename : str, mode : str, referenceFile : None=None) -> ReadVCF: p
 def openVCF(filename : str, mode : str, referenceFile : str=None) -> CreateVCF: pass
 
 def openVCF(filename : str, mode : str, referenceFile : str=None) -> ReadVCF|CreateVCF:
+	from VariantCallFixer.ReadVCF import ReadVCF
+	from VariantCallFixer.CreateVCF import CreateVCF
 	if mode == "r":
 		return ReadVCF(filename=filename)
 	elif mode == "a":
