@@ -47,6 +47,7 @@ SEPARATORS = [(0, ";"), (1, ":"), (2, "|"), (3, ",")]
 CONDITIONS = {">":"__gt__", "<":"__lt__", ">=":"__ge__", "<=":"__le__", "==":"__eq__", "!=":"__ne__"}
 LOGGER = DummyLogger()
 
+
 class VCFIOWrapper:
 	file : TextIO
 
@@ -59,3 +60,7 @@ class VCFIOWrapper:
 
 	def close(self):
 		self.file.close()
+
+class RowDict(dict): pass
+class ReadVCF(VCFIOWrapper): pass
+class CreateVCF(VCFIOWrapper): pass
