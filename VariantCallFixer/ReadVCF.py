@@ -1,6 +1,5 @@
 
 from VariantCallFixer.Globals import *
-from VariantCallFixer.RowDict import RowDict
 from VariantCallFixer.Functions import splitRow, rowFromBytes
 
 class ReadVCF(VCFIOWrapper):
@@ -79,7 +78,7 @@ class ReadVCF(VCFIOWrapper):
 	def where(self, CHROM : str | list[str]=None, POS : int|list[int]=None, REF : str | list[str]=None, ALT : str | list[str]=None, QUAL : int | list[int]=None, FILTER : str | list[str]=None, INFO : str | list[str]=None, FORMAT=None, rawOut : bool=False) -> list[RowDict]:
 		"""Gets dictionary of VCF row values, interpreted into pythonic types as well as it can. Dictionary can be
 		queried using keys (or attributes) of the same names as the keyword-arguments for this method."""
-		
+
 		flags = {c:locals()[c] for c in self.columns if locals()[c] is not None}
 		if len(flags) == 0:
 			LOGGER.debug("ReadVCF.where() not given any keyword arguments to search by.")
@@ -102,7 +101,7 @@ class ReadVCF(VCFIOWrapper):
 			LOGGER.warning("ReadVCF.where() was unable to find any rows that match the given query.")
 			rowStarts = []
 		
-		rows : list[RowDict] = []
+		rows : list = []
 		for rowStart in rowStarts:
 			self.file.seek(rowStart)
 			try:
