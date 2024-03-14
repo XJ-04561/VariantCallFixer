@@ -45,17 +45,17 @@ class ReadVCF(VCFIOWrapper):
 
 		# Start Indexing the entries.
 		for row in self.file:
+			rowDict = splitRow(row)
+
+			if rowDict is None:
+				LOGGER.error(f"Bad row in VCF file '{filename}' Row #{rowNumber}")
+				raise ValueError(f"Bad row in VCF file '{filename}' Row #{rowNumber}")
+			
 			rowLength = len(row)
 			rowNumber += 1
 			self.byteToRow[startOfRow] = rowNumber
 			self.entryRows.append(startOfRow)
 
-			rowDict = splitRow(row)
-
-			if rowDict is None:
-				LOGGER.error("Bad row in VCF file '{filename}' Row #{n}".format(filename=filename, n=rowNumber))
-				raise ValueError("Bad row in VCF file '{filename}' Row #{n}".format(filename=filename, n=rowNumber))
-			
 			for key in self.columns:
 				if key in ["INFO", "FORMAT", "SAMPLES"]: continue
 
@@ -72,8 +72,11 @@ class ReadVCF(VCFIOWrapper):
 			startOfRow += rowLength
 
 	def __iter__(self):
-		self.file.seek(self.entryRows[0])
-		return (rowFromBytes(row.rstrip()) for row in self.file)
+		if len(self.entryRows) > 0:
+			self.file.seek(self.entryRows[0])
+			return (rowFromBytes(row.rstrip()) for row in self.file)
+		else:
+			return iter([])
 
 	def where(self, *args, **kwargs) -> list[RowDict]:
 		"""```python

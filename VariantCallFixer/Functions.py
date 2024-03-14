@@ -38,7 +38,7 @@ def interpret(string : str|bytes, seps=SEPARATORS):
 	return string
 
 def splitRow(row : bytes) -> dict[str,bytes]:
-	cells = [interpret(cell, seps=[]) for cell in row.split(b"\t")]
+	cells = [interpret(cell, seps=[]) for cell in row.strip().split(b"\t")]
 	rowDict = dict(zip(COLUMNS, cells))
 	if len(cells) > len(COLUMNS):
 		rowDict["FORMAT"] = cells[len(COLUMNS)]
