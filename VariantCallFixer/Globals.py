@@ -1,16 +1,6 @@
 
 from typing import TextIO, overload
-import time
-
-class DummyLogger:
-	"""A dummy logger for all Path derived objects to log to, except it does not
-	perform logging. To enable logging you simply assign a working logger to the
-	'logger' attribute of the Path class."""
-	def debug(self, *args, **kwargs): pass
-	def info(self, *args, **kwargs): pass
-	def warning(self, *args, **kwargs): pass
-	def error(self, *args, **kwargs): pass
-	def critical(self, *args, **kwargs): pass
+import time, logging
 
 EXAMPLE_VCF_HEADER = """##fileformat=VCFv4.3
 ##fileDate={dateYYYYMMDD}
@@ -45,7 +35,7 @@ OPTIONAL_COLUMNS = ["FORMAT"]
 VCF_ROW =       "{CHROM}	{POS}	{ID}	{REF}	{ALT}	{QUAL}	{FILTER}	{INFO}"
 SEPARATORS = [(0, ";"), (1, ":"), (2, "|"), (3, ",")]
 CONDITIONS = {">":"__gt__", "<":"__lt__", ">=":"__ge__", "<=":"__le__", "==":"__eq__", "!=":"__ne__"}
-LOGGER = DummyLogger()
+LOGGER = logging.Logger("VariantCallFixer")
 
 
 class VCFIOWrapper:
