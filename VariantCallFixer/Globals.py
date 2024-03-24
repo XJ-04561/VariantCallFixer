@@ -46,8 +46,17 @@ class VCFIOWrapper:
 		self.file = open(filename, mode)
 	
 	def __del__(self):
-		self.file.close()
+		try:
+			self.file.close()
+		except:
+			pass
 
+	def __enter__(self):
+		return self
+	
+	def __exit__(self, *args, **kwargs):
+		self.file.close()
+	
 	def close(self):
 		self.file.close()
 
