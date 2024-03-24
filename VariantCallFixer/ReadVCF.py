@@ -12,6 +12,7 @@ class ReadVCF(VCFIOWrapper):
 
 	sampleNames : list[str]
 	byteToRow : dict[int,int]
+	file : BinaryIO
 
 	def __init__(self, filename : str):
 		super().__init__(filename, mode="rb")
@@ -31,7 +32,7 @@ class ReadVCF(VCFIOWrapper):
 			if row.startswith(b"##"):
 				name, value = row[2:].split(b"=", 1)
 				if name.isalnum():
-					self.header[name.encode("utf-8").strip()] = value.encode("utf-8").strip()
+					self.header[name.decode("utf-8").strip()] = value.decode("utf-8").strip()
 			elif row.startswith(b"#"):
 				l = len("#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO")
 				if len(row) >= l and len(row) <= l+3:
@@ -135,7 +136,7 @@ class ReadVCF(VCFIOWrapper):
 				if not rawOut:
 					rows.append(rowFromBytes(self.file.readline().rstrip()))
 				else:
-					rows.append(self.file.readline().rstrip().encode("utf-8"))
+					rows.append(self.file.readline().rstrip().decode("utf-8"))
 			except:
 				LOGGER.error("Bad row in VCF file '{filename}' Row #{n}".format(filename=self.file.name, n=self.byteToRow[rowStart]))
 				raise ValueError("Bad row in VCF file '{filename}' Row #{n}".format(filename=self.file.name, n=self.byteToRow[rowStart]))

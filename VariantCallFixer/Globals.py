@@ -1,5 +1,5 @@
 
-from typing import TextIO, overload
+from typing import TextIO, BinaryIO, overload
 import time, logging
 
 EXAMPLE_VCF_HEADER = """##fileformat=VCFv4.3
