@@ -81,7 +81,7 @@ def getSNPdata(filename, key="POS", values=["REF"], out={}) -> dict[int,tuple[st
 	'''
 	reader = openVCF(filename, "r")
 	for entry in reader:
-		out[key] = tuple(entry[value] for value in values)
+		out[entry[key]] = tuple(entry[value] for value in values)
 		# Called Base is in the "REF" field
 	
 	return out
