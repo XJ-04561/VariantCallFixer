@@ -39,7 +39,7 @@ LOGGER = logging.Logger("VariantCallFixer")
 
 
 class VCFIOWrapper:
-	file : TextIO
+	file : BinaryIO|TextIO
 
 	def __init__(self, filename, mode):
 		LOGGER.debug(f"Opening vcf file: open({filename!r}, {mode!r})")

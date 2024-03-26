@@ -4,7 +4,6 @@ from VariantCallFixer.Functions import splitRow, rowFromBytes
 
 class ReadVCF(VCFIOWrapper):
 
-
 	header : dict[str,str]
 	entryRows : list[int]
 	rowsBySelection : dict[str,dict[str|int, set[int]]]

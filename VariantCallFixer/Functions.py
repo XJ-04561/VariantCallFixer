@@ -1,6 +1,6 @@
 
 
-
+from typing import Generator
 from VariantCallFixer.Globals import *
 
 def interpretIterable(string : str, seps=SEPARATORS):
@@ -56,12 +56,6 @@ def rowFromBytes(row : bytes):
 		raise ValueError("Bad row in VCF file.")
 	return RowDict(rowDict)
 
-
-@overload
-def openVCF(filename : str, mode : str, referenceFile : None=None) -> ReadVCF: pass
-@overload
-def openVCF(filename : str, mode : str, referenceFile : str=None) -> CreateVCF: pass
-
 def openVCF(filename : str, mode : str, referenceFile : str=None) -> ReadVCF|CreateVCF:
 	from VariantCallFixer.ReadVCF import ReadVCF
 	from VariantCallFixer.CreateVCF import CreateVCF
@@ -76,12 +70,10 @@ def openVCF(filename : str, mode : str, referenceFile : str=None) -> ReadVCF|Cre
 	else:
 		raise ValueError(f"openVCF: {mode!r} is not a recognized file mode.")
 
-def getSNPdata(filename, key="POS", values=["REF"], out={}) -> dict[int,tuple[str,None]]:
+def getSNPdata(filename, key="POS", values=["REF"]) -> Generator[tuple[int,tuple[str,None]], None, None]:
 	'''getSNPdata() -> {POS : (CALLED, ...)}
 	'''
-	reader = openVCF(filename, "r")
-	for entry in reader:
-		out[entry[key]] = tuple(entry[value] for value in values)
-		# Called Base is in the "REF" field
-	
-	return out
+	with openVCF(filename, "r") as reader:
+		for entry in reader:
+			yield (entry[key], tuple(entry[value] for value in values))
+			# Called Base is in the "REF" field

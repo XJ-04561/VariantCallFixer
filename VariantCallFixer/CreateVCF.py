@@ -3,6 +3,8 @@
 from VariantCallFixer.Globals import *
 
 class CreateVCF(VCFIOWrapper):
+
+	file : TextIO
 	meta : list[str]
 	header : list[str] # Header for the VCF, contains names of samples and other columns
 
