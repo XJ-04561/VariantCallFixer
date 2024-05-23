@@ -56,7 +56,7 @@ def rowFromBytes(row : bytes):
 		raise ValueError("Bad row in VCF file.")
 	return RowDict(rowDict)
 
-def openVCF(filename : str, mode : str, referenceFile : str=None) -> ReadVCF|CreateVCF:
+def openVCF(filename : str, mode : str, referenceFile : str=None, chrom : str=None) -> ReadVCF|CreateVCF:
 	from VariantCallFixer.ReadVCF import ReadVCF
 	from VariantCallFixer.CreateVCF import CreateVCF
 	if mode == "r":
@@ -66,7 +66,7 @@ def openVCF(filename : str, mode : str, referenceFile : str=None) -> ReadVCF|Cre
 	elif mode == "w":
 		if referenceFile is None:
 			raise TypeError("Missing keyword argument 'referenceFile' required to create a .vcf")
-		return CreateVCF(filename=filename, referenceFile=referenceFile)
+		return CreateVCF(filename=filename, referenceFile=referenceFile, chrom=chrom)
 	else:
 		raise ValueError(f"openVCF: {mode!r} is not a recognized file mode.")
 
