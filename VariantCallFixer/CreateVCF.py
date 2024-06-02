@@ -58,22 +58,6 @@ class CreateVCF(VCFIOWrapper):
 				  "the new file.")
 			elif any(not isinstance(x, HeaderEntry) for x in headerEntries):
 				raise TypeError(f"The header may only contain proper 'HeaderEntry' objects.")
-			elif any(x in self.header for x in headerEntries):
-				offenders = tuple(filter(lambda x:x in self.header, headerEntries))
-				if len(offenders) == 1:
-					raise ValueError(f"Attempted to add duplicate entry (or unique entry but twice) {offenders[0]} but entry already exists as {self.header[self.header.index(offenders[0])]}.")
-				else:
-					out = ["Attempted to add duplicate entries (or unique entries but more than once):"]
-					for offender in offenders:
-						out.append(f"{offender} exists as {self.header[self.header.index(offender)]}")
-					raise ValueError("\n".join(out))
-			elif any(x in headerEntries[i+1:] for i, x in enumerate(headerEntries)):
-				offenders = set(headerEntries)
-				offenders = {x:[y for y in headerEntries if x == y] for x in offenders}
-				out = ["Attempted to add duplicate entries (or unique entries but more than once):"]
-				for offender in offenders:
-					out.append(", ".join(map(str, offenders[offender])))
-				raise ValueError("\n".join(out))
 			for entry in headerEntries:
 				self.header.append(entry)
 
