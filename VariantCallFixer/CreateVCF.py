@@ -61,12 +61,12 @@ class CreateVCF(VCFIOWrapper):
 			for entry in headerEntries:
 				self.header.append(entry)
 
-	def addEntry(self, *, CHROM : str=".", POS : str=".", ID : str=".", REF : str=".", ALT : str=".", QUAL : str=".", FILTER : str=".", INFO : str="."):
+	def addEntry(self, *, CHROM : str=".", POS : str=".", ID : str=".", REF : str=".", ALT : str|Iterable[str]=".", QUAL : str=".", FILTER : str=".", INFO : str="."):
 		with self.writeLock:
 			if self.DUMPED:
-				self.file.write( f"{self.newline}{CHROM}\t{POS}\t{ID}\t{REF}\t{', '.join(ALT)}\t{QUAL}\t{FILTER}\t{INFO}")
+				self.file.write( f"{self.newline}{CHROM}\t{POS}\t{ID}\t{REF}\t{ALT if isinstance(ALT, str) else ','.join(ALT)}\t{QUAL}\t{FILTER}\t{INFO}")
 			else:
-				self.body.append( f"{CHROM}\t{POS}\t{ID}\t{REF}\t{', '.join(ALT)}\t{QUAL}\t{FILTER}\t{INFO}")
+				self.body.append( f"{CHROM}\t{POS}\t{ID}\t{REF}\t{ALT if isinstance(ALT, str) else ','.join(ALT)}\t{QUAL}\t{FILTER}\t{INFO}")
 	
 	def save(self):
 		"""Alias for "CreateVCF.dump()"."""
