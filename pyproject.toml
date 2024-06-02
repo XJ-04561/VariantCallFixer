@@ -36,5 +36,5 @@ dependencies = []
 [project.urls]
 Repository = "https://github.com/XJ-04561/VariantCallFixer.git"
 
-[project.scripts]
-VariantCallFixer = "VariantCallFixer.CommandLineParser:main"
+# [project.scripts]
+# VariantCallFixer = "VariantCallFixer.CLI:main"
