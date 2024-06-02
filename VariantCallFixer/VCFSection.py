@@ -8,6 +8,7 @@ class VCFHeader(UserList):
 	_nameDict : dict[str,HeaderEntry]
 
 	def __init__(self, initList : Iterable[HeaderEntry] = []):
+		self._nameDict = {}
 		super().__init__()
 		self.append(Fileformat())
 		self.append(FileDate())
