@@ -93,19 +93,29 @@ def openVCF(filename : str, mode : str):
 @overload
 def getSNPdata(filename, key : str="POS") -> Generator[tuple[int,str], None, None]: ...
 @overload
-def getSNPdata(filename, key : str="POS", values : Iterable[str]=["REF"]) -> Generator[tuple[int,tuple[str|int|tuple[str]|dict]], None, None]: ...
-def getSNPdata(filename, key="POS", values=["REF"]):
+def getSNPdata(filename, key : list) -> Generator[tuple[tuple[Any],str], None, None]: ...
+@overload
+def getSNPdata(filename, key : str, values : str="REF") -> Generator[tuple[Any,str], None, None]: ...
+@overload
+def getSNPdata(filename, key : list, values : list[str]=["REF"]) -> Generator[tuple[tuple[Any],tuple[int,tuple[str|int|tuple[str]|dict]]], None, None]: ...
+def getSNPdata(filename, key="POS", values="REF"):
 	'''getSNPdata() -> {POS : (CALLED, ...)}
 	'''
 	with openVCF(filename, "r") as reader:
-		if len(values) == 1:
-			for entry in reader:
-				yield (entry[key], entry[values[0]])
-				# Called Base is in the "REF" field	
+		if isinstance(key, list):
+			if isinstance(values, list):
+				func = lambda entry : (tuple(entry[k] for k in key), tuple(entry[v] for v in values))
+			else:
+				func = lambda entry : (tuple(entry[k] for k in key), entry[values])
 		else:
-			for entry in reader:
-				yield (entry[key], tuple(entry[value] for value in values))
-				# Called Base is in the "REF" field
+			if isinstance(values, list):
+				func = lambda entry : (entry[key], tuple(entry[v] for v in values))
+			else:
+				func = lambda entry : (entry[key], entry[values])
+			
+		for entry in reader:
+			yield func(entry)
+		# Called Base is in the "REF" field
 
 try:
 	from VariantCallFixer.ReadVCF import ReadVCF
