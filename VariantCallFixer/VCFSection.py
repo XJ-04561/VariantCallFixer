@@ -1,18 +1,18 @@
 
 from VariantCallFixer.Globals import *
 from collections import UserList
-from VariantCallFixer.HeaderEntries import HeaderEntry
+from VariantCallFixer.HeaderEntries import HeaderEntry, Fileformat, FileDate
 
 class VCFHeader(UserList):
 	
 	_nameDict : dict[str,HeaderEntry]
 
-	def __init__(self, initList : Iterable[HeaderEntry] = None):
-		if initList:
-			self._nameDict = {item.name:item for item in initList}
-		else:
-			self._nameDict = {}
-		super().__init__(initList)
+	def __init__(self, initList : Iterable[HeaderEntry] = []):
+		super().__init__()
+		self.append(Fileformat())
+		self.append(FileDate())
+		for item in initList:
+			self[item.name] = item
 
 	def __getitem__(self, key):
 		if isinstance(key, type) and issubclass(key, HeaderEntry):
@@ -61,8 +61,14 @@ class VCFHeader(UserList):
 			fs = "\n"
 		return "".join(map(f"##{{}}{fs}".format, self))
 	
-	def append(self, item):
-		super().append(item)
+	def append(self, item : HeaderEntry):
+		if not item.unique:
+			super().append(item)
+		elif item not in self:
+			super().append(item)
+		else:
+			self[item.name] = item
+		
 		if item.multiplet:
 			if item.name not in self._nameDict:
 				self._nameDict[item.name] = []
