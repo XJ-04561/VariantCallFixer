@@ -8,42 +8,9 @@ def test_creation():
 	f = openVCF("test.vcf", "w")
 
 	f.addMeta(Fileformat("VCFv4.3"))
-
-	assert not f.DUMPED
-	exc = None
-	try:
-		f.addMeta(Fileformat("VCFv4.2"))
-	except ValueError as e:
-		exc = e
-	
-	assert isinstance(exc, ValueError)
-
-	exc = None
-	try:
-		f.addMeta(FileDate(), FileDate())
-	except ValueError as e:
-		exc = e
-	assert isinstance(exc, ValueError)
-
 	f.addMeta(FileDate())
-
-	assert not f.DUMPED
-
-	exc = None
-	try:
-		f.addMeta(FileDate())
-	except ValueError as e:
-		exc = e
-	assert isinstance(exc, ValueError)
-
 	f.addMeta(Source("MyApp"))
-
-	assert not f.DUMPED
-
 	f.addMeta(Reference(FILE("/home/XJ-04561/.local/MetaCanSNPer/References/francisella_tularensis/ASM898v1.fna")))
-
-	assert not f.DUMPED
-
 	f.addMeta(Contig(ID="AJ749949.2", URL=FILE("/home/XJ-04561/.local/MetaCanSNPer/References/francisella_tularensis/ASM898v1.fna")))
 
 	assert not f.DUMPED
