@@ -1,22 +1,31 @@
 
 from VariantCallFixer.Globals import *
-from VariantCallFixer.Functions import splitRow, rowFromBytes
+import VariantCallFixer.Globals as Globals
+from VariantCallFixer.Functions import rowFromBytes
+from VariantCallFixer.HeaderEntries import parseEntry
+from VariantCallFixer.VCFSection import VCFHeader
+
+_BASE_FLAGS = {i:Ditto for i in range(10)}
+_INDEX_TO_NAME = dict(enumerate(["CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER", "INFO", "FORMAT", "SAMPLES"]))
 
 class ReadVCF(VCFIOWrapper):
 
 	header : dict[str,str]
 	entryRows : list[int]
+	entriesStart : int
 	rowsBySelection : dict[str,dict[str|int, set[int]]]
 	columns : list[str] = ["CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER", "INFO", "FORMAT", "SAMPLES"]
+	cols : int
+	entries : int
 
 	sampleNames : list[str]
 	byteToRow : dict[int,int]
 	file : BinaryIO
 
-	def __init__(self, filename : str):
-		super().__init__(filename, mode="rb")
+	def __init__(self, filename : str, *, logger : logging.Logger=None):
+		super().__init__(filename, mode="rb", logger=logger)
 
-		self.header = {}
+		self.header = VCFHeader()
 		self.entryRows = []
 		self.byteToRow = {}
 		self.rowsBySelection = {c:{} for c in self.columns}
@@ -25,119 +34,73 @@ class ReadVCF(VCFIOWrapper):
 		rowNumber = 0
 		# Pass through Header
 		for row in self.file:
-			rowLength = len(row)
-			rowNumber += 1
 			self.byteToRow[startOfRow] = rowNumber
+			rowNumber += 1
+			startOfRow += len(row)
 			if row.startswith(b"##"):
-				name, value = row[2:].split(b"=", 1)
-				if name.isalnum():
-					self.header[name.decode("utf-8").strip()] = value.decode("utf-8").strip()
-			elif row.startswith(b"#"):
-				l = len("#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO")
-				if len(row) >= l and len(row) <= l+3:
-					self.sampleNames = []
+				try:
+					entry = parseEntry(row.strip())
+				except UnicodeEncodeError:
+					raise UnicodeEncodeError("File contains utf-8 illegal characters.")
+				except ValueError as e:
+					self.LOG.fatal(e)
 				else:
-					self.sampleNames = row[l+len("FORMAT	"):].strip().decode("utf-8").split("\t")
-				startOfRow += rowLength
+					self.header.append(entry)
+			elif row.startswith(b"#"):
+				_, *self.sampleNames = row.decode("utf-8")[len(COLUMN_HEADER):].rstrip().split("\t")
+				self.cols = 8 + (1+len(self.sampleNames))*(bool(self.sampleNames))
 				break
-
-			startOfRow += rowLength
+			else:
+				raise ValueError(f"Entry row encountered before column header: {filename!r} Row #{rowNumber}")
+		self.entriesStart = startOfRow
 
 		# Start Indexing the entries.
+		self.entries  = 0
 		for row in self.file:
-			rowDict = splitRow(row)
-
-			if rowDict is None:
-				LOGGER.error(f"Bad row in VCF file '{filename}' Row #{rowNumber}")
-				raise ValueError(f"Bad row in VCF file '{filename}' Row #{rowNumber}")
+			if not row.strip():
+				break
 			
-			rowLength = len(row)
-			rowNumber += 1
 			self.byteToRow[startOfRow] = rowNumber
 			self.entryRows.append(startOfRow)
 
-			for key in self.columns:
-				if key in ["INFO", "FORMAT", "SAMPLES"]: continue
-
-				if key in rowDict:
-					try:
-						if rowDict[key] in self.rowsBySelection[key]:
-							self.rowsBySelection[key][rowDict[key]].add(startOfRow)
-						else:
-							self.rowsBySelection[key][rowDict[key]] = {startOfRow}
-					except TypeError:
-						# list is not hashable, skip those for now.
-						pass
-
-			startOfRow += rowLength
-
-	def __iter__(self):
-		if len(self.entryRows) > 0:
-			self.file.seek(self.entryRows[0])
-			return (rowFromBytes(row.rstrip()) for row in self.file)
-		else:
-			return iter([])
-
-	def where(self, *args, **kwargs) -> list[RowDict]:
-		"""```python
-		def where(self,
-			CHROM : str | list[str],
-			POS : int | list[int],
-			ID : str,
-			REF : str | list[str],
-			ALT : str | list[str],
-			QUAL : int | list[int],
-			FILTER : str | list[str],
-			INFO : tuple[str,str,Any] | list[tuple[str,str,Any]],
-			FORMAT : tuple[str,str,Any] | list[tuple[str,str,Any]],
-			rawOut : bool=False) -> list[RowDict]:
-		```
-		Gets dictionary of VCF row values, interpreted into pythonic types as well as it can. Dictionary can be
-		queried using keys (or attributes) of the same names as the keyword-arguments for this method.
+			self.entries += 1
+			rowNumber += 1
 		
-		INFO and FORMAT selectors are not yet implemented!
+		# File should be EOF
+		for row in self.file:
+			self.LOG.error(f"Empty rows in VCF file must be at the end of the file. Row inside file content was empty: {filename!r} Row #{rowNumber}")
+			raise ValueError(f"Empty rows in VCF file must be at the end of the file. Row inside file content was empty: {filename!r} Row #{rowNumber}")
+
+	def __iter__(self) -> Generator["RowDict", None, None]:
+		if self.entries > 0:
+			self.file.seek(self.entryRows[0])
+			for i, row in zip(range(self.entries), self.file):
+				yield rowFromBytes(row.rstrip())
+	
+	@overload
+	def where(self, *, CHROM : str, POS : int, ID : str, REF : str, ALT : str|Iterable[str], QUAL : int, FILTER : str) -> list["RowDict"]: ...
+	def where(self, **kwargs):
+		"""Gets dictionary of VCF row values, interpreted into pythonic types as well as it can. Dictionary can be
+		queried using keys (or attributes) of the same names as the keyword-arguments for this method.
 		"""
 
+		if not self.entries:
+			return []
+		
+		if "ALT" in kwargs and not isinstance(kwargs["ALT"], str):
+			kwargs["ALT"] = ", ".join(kwargs["ALT"])
+		
+		criteria = {name:str(kwargs[name]).encode("utf-8") for name in kwargs}
+		
+		self.file.seek(self.entriesStart)
+		results = []
+		for i, row in zip(range(self.entries), self.file):
+			if all(COLUMNS[j] not in kwargs or value == criteria[COLUMNS[j]] for j, value in zip(range(7), row.rstrip().split(b"\t"))):
+				results.append(rowFromBytes(row.rstrip()))
 
-		rawOut = kwargs.pop("rawOut", False)
-		
-		if not set(kwargs.keys()).issubset(self.columns):
-			raise TypeError(f"ReadVCF.where() got (an) unexpected keyword argument(s) {', '.join(set(kwargs.keys()).difference(self.columns))}'")
-		elif len(args)>0 and set(self.columns[:len(args)]).issubset(kwargs.keys()):
-			raise TypeError(f"ReadVCF.where() was given values for a column through both positional and keyword arguments. Offending Columns: {', '.join(set(self.columns[:len(args)]).intersection(kwargs.keys()))}")
-		
-		flags = dict(zip(self.columns, args)) | kwargs
-		if len(flags) == 0:
-			LOGGER.debug("ReadVCF.where() not given any keyword arguments to search by.")
-			return None
-		
-		# Needs to find intersect of row sets.
-		sets : list[set] = []
-		for flag, value in flags.items():
-			if type(value) is list:
-				s = set()
-				for key in value:
-					s |= self.rowsBySelection[flag][key]
-				sets.append(s)
-			else:
-				sets.append(self.rowsBySelection[flag][value])
-		
-		try:
-			rowStarts = sorted(list(set.intersection(*sets)))
-		except:
-			LOGGER.warning("ReadVCF.where() was unable to find any rows that match the given query.")
-			rowStarts = []
-		
-		rows : list = []
-		for rowStart in rowStarts:
-			self.file.seek(rowStart)
-			try:
-				if not rawOut:
-					rows.append(rowFromBytes(self.file.readline().rstrip()))
-				else:
-					rows.append(self.file.readline().rstrip().decode("utf-8"))
-			except:
-				LOGGER.error("Bad row in VCF file '{filename}' Row #{n}".format(filename=self.file.name, n=self.byteToRow[rowStart]))
-				raise ValueError("Bad row in VCF file '{filename}' Row #{n}".format(filename=self.file.name, n=self.byteToRow[rowStart]))
+		return results
 
-		return rows
+try:
+	from VariantCallFixer.RowDict import RowDict
+except ImportError:
+	pass
