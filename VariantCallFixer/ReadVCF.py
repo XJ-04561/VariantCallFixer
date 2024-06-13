@@ -2,7 +2,7 @@
 from VariantCallFixer.Globals import *
 import VariantCallFixer.Globals as Globals
 from VariantCallFixer.Functions import rowFromBytes
-from VariantCallFixer.HeaderEntries import parseEntry
+from VariantCallFixer.HeaderEntries import HeaderEntry
 from VariantCallFixer.VCFSection import VCFHeader
 
 _BASE_FLAGS = {i:Ditto for i in range(10)}
@@ -39,11 +39,9 @@ class ReadVCF(VCFIOWrapper):
 			startOfRow += len(row)
 			if row.startswith(b"##"):
 				try:
-					entry = parseEntry(row.strip())
+					entry = HeaderEntry.parse(row.strip())
 				except UnicodeEncodeError:
 					raise UnicodeEncodeError("File contains utf-8 illegal characters.")
-				except ValueError as e:
-					self.LOG.fatal(e)
 				else:
 					self.header.append(entry)
 			elif row.startswith(b"#"):
@@ -77,6 +75,18 @@ class ReadVCF(VCFIOWrapper):
 			for i, row in zip(range(self.entries), self.file):
 				yield rowFromBytes(row.rstrip())
 	
+	@overload
+	def __getitem__(self, key : tuple) -> Generator[tuple[Any], None, None]: ...
+	@overload
+	def __getitem__(self, key : Any) -> Generator[Any, None, None]: ...
+	def __getitem__(self, key):
+		if isinstance(key, tuple):
+			for row in self:
+				yield tuple(row.get(k) for k in key)
+		else:
+			for row in self:
+				yield row.get(key)
+
 	@overload
 	def where(self, *, CHROM : str, POS : int, ID : str, REF : str, ALT : str|Iterable[str], QUAL : int, FILTER : str) -> list["RowDict"]: ...
 	def where(self, **kwargs):
