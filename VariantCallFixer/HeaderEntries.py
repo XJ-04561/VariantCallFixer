@@ -27,6 +27,7 @@ class URL(str):
 			return super().__new__(cls, data)
 		else:
 			return super().__new__(cls, cls.PROTOCOL + data)
+	
 	def __init_subclass__(cls) -> None:
 		cls.PROTOCOL = f"{cls.__name__.lower()}://"
 
@@ -37,8 +38,18 @@ class HTTPS(URL): pass
 
 class TagDict(dict):
 	
+	NAME_VALUE_PATTERN = re.compile(r"""(\w+?)[=](["].*?["]|['].*?[']|[^,]*)""", flags=re.DOTALL)
+	FULL_PATTERN = re.compile(f"^[<]({NAME_VALUE_PATTERN.pattern}([,]{NAME_VALUE_PATTERN.pattern})*)[>]$")
+
 	def __format__(self, fs):
 		return f"<{','.join(f'{key}={value}' for key, value in self.items() if value is not _NOT_SET)}>"
+	
+	@classmethod
+	def parse(cls, string : str) -> "TagDict":
+		if (m := cls.FULL_PATTERN.fullmatch(string)):
+			return cls(m.groups() for m in cls.NAME_VALUE_PATTERN.finditer(m.group(1)))
+		else:
+			return None
 
 class HeaderEntry:
 
@@ -64,6 +75,9 @@ class HeaderEntry:
 			if self.tagNames:
 				for name in self.tagNames:
 					self.value[name] = kwargs.get(name, _NOT_SET)
+			else:
+				for name, value in kwargs.items():
+					self.value[name] = value
 		elif self.singlet:
 			raise ValueError(f"{type(self).__name__!r} object only takes a single position argument to instantiate.")
 		elif self.multiplet:
@@ -91,6 +105,32 @@ class HeaderEntry:
 
 	def __hash__(self):
 		return hash(self.name) if self.unique else hash(str(self))
+	
+	@classmethod
+	def parse(cls : type["HeaderEntry"], string : str|bytes) -> "HeaderEntry":
+		if isinstance(string, bytes):
+			string = string.decode("utf-8")
+		nameString, valueString = string.lstrip("#").split("=", 1)
+
+		if any(valueString.startswith(sc2.PROTOCOL) for sc2 in URL.__subclasses__()):
+			value = URL(valueString)
+		else:
+			value = TagDict.parse(valueString) or valueString
+		
+		for subClass in cls.__subclasses__():
+			if subClass.name == nameString:
+				entryType = subClass
+				break
+		else:
+			isDict = isinstance(value, TagDict)
+			entryType = type(nameString.capitalize(), (cls,), {
+				"multiplet" : isDict, "tag" : isDict,
+				"singlet" : not isDict, "scalar" : not isDict})
+		
+		if entryType.multiplet:
+			return entryType(**value)
+		else:
+			return entryType(value)
 
 class Fileformat(HeaderEntry):
 	def __init__(self, value : str="VCFv4.3", /): super().__init__(value)
@@ -166,22 +206,6 @@ class PEDIGREE(HeaderEntry):
 class PedigreeDB(HeaderEntry):
 	def __init__(self, path : URL|str, /):
 		super().__init__(URL(path))
-
-def parseEntry(string : str|bytes):
-	if isinstance(string, bytes):
-		string = string.decode("utf-8")
-	nameString, valueString = string.lstrip("#").split("=", 1)
-	for subClass in HeaderEntry.__subclasses__():
-		if subClass.name == nameString:
-			if subClass.singlet:
-				if any(valueString.startswith(sc2.PROTOCOL) for sc2 in URL.__subclasses__()):
-					valueString = URL(valueString)
-				return subClass(valueString)
-			else:
-				items = dict([tuple(x.strip() for x in pair.strip().split("=")) for pair in valueString.strip("<>").split(",")])
-				return subClass(**items)
-	else:
-		raise ValueError(f"Couldn't parse Header entry: {string}, no matching 'HeaderEntry' subclass.")
 
 _EXAMPLE_VCF_HEADER = """
 ##fileformat=VCFv4.3

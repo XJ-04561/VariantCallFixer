@@ -2,58 +2,7 @@
 
 from typing import Generator
 from VariantCallFixer.Globals import *
-
-
-# def interpretIterable(string : str, seps=SEPARATORS):
-# 	if string.startswith("[") and string.endswith("]"):
-# 		string = string[1:-1]
-# 		for i, s in seps:
-# 			if s in string:
-# 				return [interpret(subString, seps=seps[i+1:]) for subString in string.split(s)]
-# 		return [interpret(string, seps=[])]
-# 	else:
-# 		for i, s in seps:
-# 			if s in string:
-# 				return [interpret(subString, seps=seps[i+1:]) for subString in string.split(s)]
-# 		return string
-
-# def interpret(string : str|bytes, seps=SEPARATORS):
-# 	"""Interprets anything with decimals in it or surrounded by [ ] as a list of items. Attempts to convert to int,
-# 	then float, and then to decode with utf-8."""
-# 	if type(string) is bytes:
-# 		string : str = string.decode("utf-8")
-# 	out = interpretIterable(string, seps=seps)
-# 	if out != string:
-# 		return out
-	
-# 	try:
-# 		return int(string)
-# 	except:
-# 		pass
-
-# 	try:
-# 		return float(string)
-# 	except:
-# 		pass
-
-# 	return string
-
-# def splitRow(row : bytes) -> dict[str,bytes]:
-# 	cells = [interpret(cell, seps=[]) for cell in row.strip().split(b"\t")]
-# 	rowDict = dict(zip(COLUMNS, cells))
-# 	if len(cells) > len(COLUMNS):
-# 		rowDict["FORMAT"] = cells[len(COLUMNS)]
-# 		rowDict["SAMPLES"] = cells[len(COLUMNS)+1:]
-# 	elif len(cells) < len(COLUMNS):
-# 		return None
-	
-# 	return rowDict
-
-# @lru_cache(300)
-# def rowFromBytes(row : bytes):
-# 	from VariantCallFixer.RowDict import RowDict
-# 	rowDict = splitRow(row)
-# 	return RowDict(rowDict)
+from VariantCallFixer.SampleData import SampleData
 
 @lru_cache(300)
 def rowFromBytes(row : bytes):
@@ -61,15 +10,27 @@ def rowFromBytes(row : bytes):
 	import itertools
 	kwargs = {}
 	try:
-		row = row.decode("utf-8").rstrip()
-		for col, name, convFunc in zip(row.split("\t", 8), COLUMNS, COLUMN_TYPES):
+		rowIter = iter(row.decode("utf-8").rstrip().split("\t"))
+		for name, convFunc, col in zip(COLUMNS, COLUMN_TYPES, rowIter):
 			if col == ".":
 				kwargs[name] = None
 			else:
 				kwargs[name] = convFunc(col)
-		# FORMAT, *SAMPLES = row.decode("utf-8").rstrip().split("\t")[len(COLUMNS):]
-		# SAMPLES = []
-		return RowDict(**kwargs)
+		try:
+			FORMAT, *SAMPLES = rowIter
+		except:
+			pass
+		else:
+			kwargs["FORMAT"] = FORMAT.split(":")
+			kwargs["SAMPLES"] = []
+			for sampleString in SAMPLES:
+				kwargs["SAMPLES"].append({})
+				for name, valueString in zip(FORMAT.split(":"), sampleString.split(":")):
+					kwargs["SAMPLES"][-1][name] = valueString
+				kwargs["SAMPLES"][-1] = SampleData(**kwargs["SAMPLES"][-1])
+			kwargs["SAMPLES"]
+		finally:
+			return RowDict(**kwargs)
 	except:
 		raise ValueError(f"Bad VCF row: {row!r}")
 
@@ -102,20 +63,19 @@ def getSNPdata(filename, key="POS", values="REF"):
 	'''getSNPdata() -> {POS : (CALLED, ...)}
 	'''
 	with openVCF(filename, "r") as reader:
-		if isinstance(key, list):
-			if isinstance(values, list):
+		if isinstance(key, Iterable):
+			if isinstance(values, Iterable):
 				func = lambda entry : (tuple(entry[k] for k in key), tuple(entry[v] for v in values))
 			else:
 				func = lambda entry : (tuple(entry[k] for k in key), entry[values])
 		else:
-			if isinstance(values, list):
+			if isinstance(values, Iterable):
 				func = lambda entry : (entry[key], tuple(entry[v] for v in values))
 			else:
 				func = lambda entry : (entry[key], entry[values])
 			
 		for entry in reader:
 			yield func(entry)
-		# Called Base is in the "REF" field
 
 try:
 	from VariantCallFixer.ReadVCF import ReadVCF

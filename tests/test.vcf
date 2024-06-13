@@ -1,0 +1,7 @@
+##fileformat=VCFv4.3
+##fileDate=20240613
+##source=MyApp
+##reference=file:///home/XJ-04561/.local/MetaCanSNPer/References/francisella_tularensis/ASM898v1.fna
+##contig=<ID=AJ749949.2,URL=file:///home/XJ-04561/.local/MetaCanSNPer/References/francisella_tularensis/ASM898v1.fna>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+AJ749949.2	2385	.	N	A,T,C,G	.	.	.
