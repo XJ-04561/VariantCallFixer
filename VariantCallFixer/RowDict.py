@@ -28,7 +28,10 @@ class RowDict(dict):
 		if key in self.keys():
 			return super().__getitem__(key)
 		elif "FORMAT" in self and key in self["FORMAT"]:
-			return tuple(map(lambda x:x.get(key), self.SAMPLES))
+			if len(self.SAMPLES) == 1:
+				return self.SAMPLES[0].get(key)
+			else:
+				return tuple(map(lambda x:x.get(key), self.SAMPLES))
 		elif "INFO" in self and key in self["INFO"]:
 			return self["INFO"].get(key)
 		
