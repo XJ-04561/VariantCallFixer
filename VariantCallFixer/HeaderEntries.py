@@ -1,6 +1,11 @@
 
 from VariantCallFixer.Globals import *
 
+__all__ = (
+	"URL", "FILE", "FTP", "HTTP", "HTTPS", "TagDict", "HeaderEntry", "Fileformat", "FileDate", "Source", "Reference",
+	"Contig", "Phasing", "INFO", "FILTER", "FORMAT", "ALT", "PEDIGREE", "PedigreeDB"
+)
+
 _NOT_SET = object()
 _UNIQUES = ["fileformat", "fileDate", "source"]
 
